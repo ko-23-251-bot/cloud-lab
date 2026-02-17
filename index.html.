@@ -1,15 +1,143 @@
-HTML
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<title>Облачная практика</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Лабораторная работа: Firebase + GitHub</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
+        .student-info { color: #666; font-size: 14px; margin-bottom: 20px; text-align: left; }
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            width: 100%;
+            background-color: #ffca28; /* Цвет Firebase */
+            color: #333;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        button:hover { background-color: #ffc107; }
+        #statusMessage { margin-top: 15px; font-weight: bold; display: none; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
 </head>
 <body>
-<h1>Проект успешно запущен в облаке!</h1>
-<hr>
-<p>Работу выполнил студент: <strong>Фамилия Имя</strong></p>
-<p>Группа: <strong>ПО-3</strong></p>
-<p>Тип облака: <strong>PaaS (GitHub Pages)</strong></p>
+
+<div class="container">
+    <h1>Регистрация в облаке</h1>
+    
+    <div class="student-info">
+        <p><strong>Студент:</strong> Ваше Имя (Заполните тут)</p>
+        <p><strong>Проект:</strong> procj-1c340</p>
+    </div>
+
+    <input type="text" id="nameInput" placeholder="Введите ваше имя">
+    <input type="email" id="emailInput" placeholder="Введите ваш Email">
+    <button id="sendBtn">Отправить данные</button>
+
+    <p id="statusMessage"></p>
+</div>
+
+<script type="module">
+    // 1. Импорт функций Firebase через CDN (для работы в браузере без установки Node.js)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDGp3HhpUBFdVpsp2APcQr-uu6suZSQa6k",
+        authDomain: "procj-1c340.firebaseapp.com",
+        projectId: "procj-1c340",
+        storageBucket: "procj-1c340.firebasestorage.app",
+        messagingSenderId: "213350806342",
+        appId: "1:213350806342:web:53d355b493918489ddab47"
+    };
+
+    // 3. Инициализация приложения
+    const app = initializeApp(firebaseConfig);
+    // Инициализация базы данных
+    const db = getFirestore(app);
+
+    // 4. Логика работы кнопки
+    const sendBtn = document.getElementById('sendBtn');
+    const statusMsg = document.getElementById('statusMessage');
+
+    sendBtn.addEventListener('click', async () => {
+        const name = document.getElementById('nameInput').value;
+        const email = document.getElementById('emailInput').value;
+
+        // Простая проверка, что поля не пустые
+        if (name.trim() === "" || email.trim() === "") {
+            alert("Пожалуйста, заполните все поля!");
+            return;
+        }
+
+        sendBtn.disabled = true; // Блокируем кнопку, чтобы не нажали дважды
+        sendBtn.innerText = "Отправка...";
+
+        try {
+            // ПОПЫТКА ЗАПИСИ В БАЗУ ДАННЫХ
+            // Создаем документ в коллекции "requests"
+            const docRef = await addDoc(collection(db, "requests"), {
+                userName: name,
+                userEmail: email,
+                timestamp: new Date().toISOString() // Добавляем время отправки
+            });
+
+            // Если успех:
+            console.log("Document written with ID: ", docRef.id);
+            statusMsg.innerText = "Успешно! Данные сохранены в Firestore.";
+            statusMsg.className = "success";
+            statusMsg.style.display = "block";
+            
+            // Очищаем поля
+            document.getElementById('nameInput').value = "";
+            document.getElementById('emailInput').value = "";
+
+        } catch (e) {
+            // Если ошибка:
+            console.error("Error adding document: ", e);
+            statusMsg.innerText = "Ошибка: " + e.message;
+            statusMsg.className = "error";
+            statusMsg.style.display = "block";
+            
+            // Частая ошибка: Если вы видите "Missing or insufficient permissions",
+            // значит вы не включили "Test Mode" в настройках базы данных Firebase.
+        } finally {
+            sendBtn.disabled = false;
+            sendBtn.innerText = "Отправить данные";
+        }
+    });
+</script>
+
 </body>
 </html>
