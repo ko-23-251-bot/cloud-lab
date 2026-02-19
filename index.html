@@ -2,142 +2,109 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Лабораторная работа: Firebase + GitHub</title>
+    <title>BaaS Firebase - Realtime & Security</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f2f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .container {
-            background-color: white;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-        }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
-        .student-info { color: #666; font-size: 14px; margin-bottom: 20px; text-align: left; }
-        input {
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0;
-            box-sizing: border-box;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        button {
-            width: 100%;
-            background-color: #ffca28; /* Цвет Firebase */
-            color: #333;
-            padding: 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 16px;
-            margin-top: 10px;
-        }
-        button:hover { background-color: #ffc107; }
-        #statusMessage { margin-top: 15px; font-weight: bold; display: none; }
-        .success { color: green; }
-        .error { color: red; }
+        body { font-family: 'Inter', sans-serif; background: #f4f7f6; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0;}
+        .container { width: 100%; max-width: 500px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        button#mainBtn { background: #007bff; color: white; border: none; padding: 12px; border-radius: 6px; width: 100%; font-weight: 600; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        button#mainBtn:hover { background: #0056b3; }
+        
+        /* Стили для постов (ленты) */
+        .post { background: #fff; border: 1px solid #eaeaea; padding: 15px; margin-top: 15px; border-radius: 8px; width: 100%; max-width: 500px; position: relative; box-sizing: border-box;}
+        .like-btn { cursor: pointer; border: none; background: #f8f9fa; padding: 5px 12px; border-radius: 20px; font-size: 14px; transition: 0.2s; margin-top: 10px;}
+        .like-btn:hover { background: #e2e6ea; }
+        .time { font-size: 11px; color: #999; float: right; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>Регистрация в облаке</h1>
-    
-    <div class="student-info">
-        <p><strong>Студент:</strong> Ваше Имя (Заполните тут)</p>
-        <p><strong>Проект:</strong> procj-1c340</p>
+    <div class="container">
+        <h3>Панель управления данными</h3>
+        <input type="text" id="name" placeholder="Имя профиля (минимум 3 буквы)">
+        <input type="email" id="email" placeholder="Рабочий Email">
+        <button id="mainBtn">Опубликовать в облако</button>
     </div>
 
-    <input type="text" id="nameInput" placeholder="Введите ваше имя">
-    <input type="email" id="emailInput" placeholder="Введите ваш Email">
-    <button id="sendBtn">Отправить данные</button>
+    <div id="feed" style="width: 100%; max-width: 500px;"></div>
 
-    <p id="statusMessage"></p>
-</div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+        import { 
+            getFirestore, collection, addDoc, query, orderBy, onSnapshot, 
+            serverTimestamp, updatedDoc, doc, increment, updateDoc 
+        } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-<script type="module">
-    // 1. Импорт функций Firebase через CDN (для работы в браузере без установки Node.js)
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        // КОНФИГУРАЦИЯ ВАШЕГО ПРОЕКТА
+        const firebaseConfig = {
+            apiKey: "AIzaSyDGp3HhpUBFdVpsp2APcQr-uu6suZSQa6k",
+            authDomain: "procj-1c340.firebaseapp.com",
+            projectId: "procj-1c340",
+            storageBucket: "procj-1c340.firebasestorage.app",
+            messagingSenderId: "213350806342",
+            appId: "1:213350806342:web:53d355b493918489ddab47"
+        };
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyDGp3HhpUBFdVpsp2APcQr-uu6suZSQa6k",
-        authDomain: "procj-1c340.firebaseapp.com",
-        projectId: "procj-1c340",
-        storageBucket: "procj-1c340.firebasestorage.app",
-        messagingSenderId: "213350806342",
-        appId: "1:213350806342:web:53d355b493918489ddab47"
-    };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // Делаем db глобальным для тестов безопасности (Этап III)
+        window.db = db;
 
-    // 3. Инициализация приложения
-    const app = initializeApp(firebaseConfig);
-    // Инициализация базы данных
-    const db = getFirestore(app);
+        // МЕТОД: АТОМАРНОЕ ОБНОВЛЕНИЕ (Лайки)
+        window.processLike = async (id) => {
+            const docRef = doc(db, "requests", id);
+            try {
+                await updateDoc(docRef, { likes: increment(1) });
+            } catch (e) {
+                alert("Ошибка безопасности: " + e.message);
+            }
+        };
 
-    // 4. Логика работы кнопки
-    const sendBtn = document.getElementById('sendBtn');
-    const statusMsg = document.getElementById('statusMessage');
+        // ОТПРАВКА ДАННЫХ
+        const btn = document.getElementById('mainBtn');
+        btn.addEventListener('click', async () => {
+            const nameVal = document.getElementById('name').value;
+            const emailVal = document.getElementById('email').value;
+            
+            btn.disabled = true;
+            try {
+                await addDoc(collection(db, "requests"), {
+                    name: nameVal, // Поля должны точно совпадать с Security Rules
+                    email: emailVal,
+                    likes: 0,
+                    timestamp: serverTimestamp()
+                });
+                document.getElementById('name').value = "";
+                document.getElementById('email').value = "";
+            } catch (e) {
+                alert("Ошибка: Данные отклонены сервером! Проверьте правила (Имя > 2 символов, корректный email).");
+                console.error(e);
+            }
+            btn.disabled = false;
+        });
 
-    sendBtn.addEventListener('click', async () => {
-        const name = document.getElementById('nameInput').value;
-        const email = document.getElementById('emailInput').value;
-
-        // Простая проверка, что поля не пустые
-        if (name.trim() === "" || email.trim() === "") {
-            alert("Пожалуйста, заполните все поля!");
-            return;
-        }
-
-        sendBtn.disabled = true; // Блокируем кнопку, чтобы не нажали дважды
-        sendBtn.innerText = "Отправка...";
-
-        try {
-            // ПОПЫТКА ЗАПИСИ В БАЗУ ДАННЫХ
-            // Создаем документ в коллекции "requests"
-            const docRef = await addDoc(collection(db, "requests"), {
-                userName: name,
-                userEmail: email,
-                timestamp: new Date().toISOString() // Добавляем время отправки
+        // МЕТОД: REAL-TIME СИНХРОНИЗАЦИЯ (Лента сообщений)
+        const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
+        onSnapshot(q, (snapshot) => {
+            const feed = document.getElementById('feed');
+            feed.innerHTML = ""; // Очищаем перед обновлением
+            
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                // Форматируем время
+                const timeString = data.timestamp ? data.timestamp.toDate().toLocaleTimeString() : '...';
+                
+                feed.innerHTML += `
+                    <div class="post">
+                        <span class="time">${timeString}</span>
+                        <b>${data.name}</b>
+                        <p style="margin: 5px 0;">${data.email}</p>
+                        <button class="like-btn" onclick="processLike('${doc.id}')">👍 ${data.likes || 0}</button>
+                    </div>
+                `;
             });
-
-            // Если успех:
-            console.log("Document written with ID: ", docRef.id);
-            statusMsg.innerText = "Успешно! Данные сохранены в Firestore.";
-            statusMsg.className = "success";
-            statusMsg.style.display = "block";
-            
-            // Очищаем поля
-            document.getElementById('nameInput').value = "";
-            document.getElementById('emailInput').value = "";
-
-        } catch (e) {
-            // Если ошибка:
-            console.error("Error adding document: ", e);
-            statusMsg.innerText = "Ошибка: " + e.message;
-            statusMsg.className = "error";
-            statusMsg.style.display = "block";
-            
-            // Частая ошибка: Если вы видите "Missing or insufficient permissions",
-            // значит вы не включили "Test Mode" в настройках базы данных Firebase.
-        } finally {
-            sendBtn.disabled = false;
-            sendBtn.innerText = "Отправить данные";
-        }
-    });
-</script>
-
+        });
+    </script>
 </body>
 </html>
