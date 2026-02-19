@@ -10,7 +10,6 @@
         button#mainBtn { background: #007bff; color: white; border: none; padding: 12px; border-radius: 6px; width: 100%; font-weight: 600; cursor: pointer; transition: 0.3s; margin-top: 10px; }
         button#mainBtn:hover { background: #0056b3; }
         
-        /* Стили для постов (ленты) */
         .post { background: #fff; border: 1px solid #eaeaea; padding: 15px; margin-top: 15px; border-radius: 8px; width: 100%; max-width: 500px; position: relative; box-sizing: border-box;}
         .like-btn { cursor: pointer; border: none; background: #f8f9fa; padding: 5px 12px; border-radius: 20px; font-size: 14px; transition: 0.2s; margin-top: 10px;}
         .like-btn:hover { background: #e2e6ea; }
@@ -32,10 +31,10 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
         import { 
             getFirestore, collection, addDoc, query, orderBy, onSnapshot, 
-            serverTimestamp, updatedDoc, doc, increment, updateDoc 
+            serverTimestamp, doc, increment, updateDoc 
         } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-        // КОНФИГУРАЦИЯ ВАШЕГО ПРОЕКТА
+        // Ваши ключи
         const firebaseConfig = {
             apiKey: "AIzaSyDGp3HhpUBFdVpsp2APcQr-uu6suZSQa6k",
             authDomain: "procj-1c340.firebaseapp.com",
@@ -47,52 +46,70 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        
-        // Делаем db глобальным для тестов безопасности (Этап III)
-        window.db = db;
+        window.db = db; // Оставляем для теста на взлом через F12
 
-        // МЕТОД: АТОМАРНОЕ ОБНОВЛЕНИЕ (Лайки)
-        window.processLike = async (id) => {
-            const docRef = doc(db, "requests", id);
+        // ==========================================
+        // ФУНКЦИЯ 1: Создание новой записи (Create)
+        // ==========================================
+        async function createRequest(db, userName, userEmail) {
             try {
-                await updateDoc(docRef, { likes: increment(1) });
-            } catch (e) {
-                alert("Ошибка безопасности: " + e.message);
+                const colRef = collection(db, "requests");
+                const docRef = await addDoc(colRef, {
+                    name: userName,
+                    email: userEmail,
+                    likes: 0,
+                    timestamp: serverTimestamp()
+                });
+                console.log("Успешно создано. ID документа:", docRef.id);
+                return true; // Возвращаем true, если успешно
+            } catch (error) {
+                console.error("Ошибка при создании записи:", error.message);
+                alert("Ошибка: Данные отклонены сервером! Проверьте правила.");
+                return false;
+            }
+        }
+
+        // ==========================================
+        // ФУНКЦИЯ 2: Атомарное обновление (Лайки)
+        // ==========================================
+        window.addLike = async function(documentId) {
+            try {
+                const docRef = doc(db, "requests", documentId);
+                await updateDoc(docRef, {
+                    likes: increment(1)
+                });
+                console.log("Лайк успешно добавлен к документу:", documentId);
+            } catch (error) {
+                console.error("Ошибка безопасности или сети:", error.message);
+                alert("Ошибка безопасности: " + error.message);
             }
         };
 
-        // ОТПРАВКА ДАННЫХ
+        // --- ЛОГИКА ИНТЕРФЕЙСА ---
+
+        // 1. Отправка формы (вызывает Функцию 1)
         const btn = document.getElementById('mainBtn');
         btn.addEventListener('click', async () => {
             const nameVal = document.getElementById('name').value;
             const emailVal = document.getElementById('email').value;
             
             btn.disabled = true;
-            try {
-                await addDoc(collection(db, "requests"), {
-                    name: nameVal, // Поля должны точно совпадать с Security Rules
-                    email: emailVal,
-                    likes: 0,
-                    timestamp: serverTimestamp()
-                });
+            const success = await createRequest(db, nameVal, emailVal);
+            if (success) {
                 document.getElementById('name').value = "";
                 document.getElementById('email').value = "";
-            } catch (e) {
-                alert("Ошибка: Данные отклонены сервером! Проверьте правила (Имя > 2 символов, корректный email).");
-                console.error(e);
             }
             btn.disabled = false;
         });
 
-        // МЕТОД: REAL-TIME СИНХРОНИЗАЦИЯ (Лента сообщений)
+        // 2. Real-time лента сообщений
         const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
         onSnapshot(q, (snapshot) => {
             const feed = document.getElementById('feed');
-            feed.innerHTML = ""; // Очищаем перед обновлением
+            feed.innerHTML = ""; 
             
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                // Форматируем время
+            snapshot.forEach((docSnap) => {
+                const data = docSnap.data();
                 const timeString = data.timestamp ? data.timestamp.toDate().toLocaleTimeString() : '...';
                 
                 feed.innerHTML += `
@@ -100,7 +117,7 @@
                         <span class="time">${timeString}</span>
                         <b>${data.name}</b>
                         <p style="margin: 5px 0;">${data.email}</p>
-                        <button class="like-btn" onclick="processLike('${doc.id}')">👍 ${data.likes || 0}</button>
+                        <button class="like-btn" onclick="addLike('${docSnap.id}')">👍 ${data.likes || 0}</button>
                     </div>
                 `;
             });
