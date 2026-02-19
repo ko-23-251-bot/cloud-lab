@@ -110,7 +110,7 @@
             
             snapshot.forEach((docSnap) => {
                 const data = docSnap.data();
-                const timeString = data.timestamp ? data.timestamp.toDate().toLocaleTimeString() : '...';
+                const timeString = (data.timestamp && typeof data.timestamp.toDate === 'function') ? data.timestamp.toDate().toLocaleTimeString() : 'Только что...';
                 
                 feed.innerHTML += `
                     <div class="post">
