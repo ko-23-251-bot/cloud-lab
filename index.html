@@ -1,22 +1,147 @@
 <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <title>BaaS Firebase - Realtime & Security</title>
     <style>
-        body { font-family: 'Inter', sans-serif; background: #f4f7f6; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0;}
-        .container { width: 100%; max-width: 500px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        button#mainBtn { background: #007bff; color: white; border: none; padding: 12px; border-radius: 6px; width: 100%; font-weight: 600; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        /* Базовые светлые стили */
+        :root {
+            --bg-color: #f4f7f6;
+            --container-bg: white;
+            --text-color: #333;
+            --border-color: #ddd;
+            --input-bg: #fff;
+            --post-bg: #fff;
+            --btn-hover: #e2e6ea;
+            --like-bg: #f8f9fa;
+        }
+
+        /* Темная тема */
+        body.dark-mode {
+            --bg-color: #121212;
+            --container-bg: #1e1e1e;
+            --text-color: #e0e0e0;
+            --border-color: #444;
+            --input-bg: #2c2c2c;
+            --post-bg: #1e1e1e;
+            --btn-hover: #555;
+            --like-bg: #333;
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: var(--bg-color); 
+            color: var(--text-color);
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            padding: 20px; 
+            margin: 0;
+            transition: background 0.3s, color 0.3s;
+        }
+        
+        .header-bar {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .online-badge {
+            background: #28a745;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .theme-toggle {
+            cursor: pointer;
+            background: var(--container-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            transition: 0.3s;
+        }
+
+        .container { 
+            width: 100%; 
+            max-width: 500px; 
+            background: var(--container-bg); 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+            box-sizing: border-box;
+            transition: background 0.3s;
+        }
+        
+        input { 
+            width: 100%; 
+            padding: 12px; 
+            margin: 8px 0; 
+            border: 1px solid var(--border-color); 
+            background: var(--input-bg);
+            color: var(--text-color);
+            border-radius: 6px; 
+            box-sizing: border-box; 
+        }
+        
+        button#mainBtn { 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 12px; 
+            border-radius: 6px; 
+            width: 100%; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: 0.3s; 
+            margin-top: 10px; 
+        }
+        
         button#mainBtn:hover { background: #0056b3; }
         
-        .post { background: #fff; border: 1px solid #eaeaea; padding: 15px; margin-top: 15px; border-radius: 8px; width: 100%; max-width: 500px; position: relative; box-sizing: border-box;}
-        .like-btn { cursor: pointer; border: none; background: #f8f9fa; padding: 5px 12px; border-radius: 20px; font-size: 14px; transition: 0.2s; margin-top: 10px;}
-        .like-btn:hover { background: #e2e6ea; }
+        .post { 
+            background: var(--post-bg); 
+            border: 1px solid var(--border-color); 
+            padding: 15px; 
+            margin-top: 15px; 
+            border-radius: 8px; 
+            width: 100%; 
+            max-width: 500px; 
+            position: relative; 
+            box-sizing: border-box;
+            transition: background 0.3s;
+        }
+        
+        .like-btn { 
+            cursor: pointer; 
+            border: none; 
+            background: var(--like-bg); 
+            color: var(--text-color);
+            padding: 5px 12px; 
+            border-radius: 20px; 
+            font-size: 14px; 
+            transition: 0.2s; 
+            margin-top: 10px;
+        }
+        
+        .like-btn:hover { background: var(--btn-hover); }
         .time { font-size: 11px; color: #999; float: right; }
     </style>
 </head>
 <body>
+
+    <div class="header-bar">
+        <div class="online-badge">🟢 Онлайн: <span id="onlineCount">...</span></div>
+        <button id="themeToggle" class="theme-toggle">🌙 Темная тема</button>
+    </div>
 
     <div class="container">
         <h3>Панель управления данными</h3>
@@ -28,16 +153,25 @@
     <div id="feed" style="width: 100%; max-width: 500px;"></div>
 
     <script type="module">
+        // Импорт Firebase Core
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+        
+        // Импорт Firestore (для постов и лайков)
         import { 
             getFirestore, collection, addDoc, query, orderBy, onSnapshot, 
             serverTimestamp, doc, increment, updateDoc 
         } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-        // Ваши ключи
+        // Импорт Realtime Database (для счетчика онлайн)
+        import { 
+            getDatabase, ref, onValue, onDisconnect, set, push 
+        } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
+
+        // Конфигурация Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyDGp3HhpUBFdVpsp2APcQr-uu6suZSQa6k",
             authDomain: "procj-1c340.firebaseapp.com",
+            databaseURL: "https://procj-1c340-default-rtdb.firebaseio.com", // Добавлено для работы Realtime Database
             projectId: "procj-1c340",
             storageBucket: "procj-1c340.firebasestorage.app",
             messagingSenderId: "213350806342",
@@ -46,22 +180,73 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        window.db = db; // Оставляем для теста на взлом через F12
+        const rtdb = getDatabase(app); // Инициализация Realtime Database
 
         // ==========================================
-        // ФУНКЦИЯ 1: Создание новой записи (Create)
+        // ФУНКЦИЯ 1: Система "Presence" (Счетчик онлайн-пользователей)
+        // ==========================================
+        function setupPresence() {
+            // Ссылка на специальный путь Firebase, который показывает, подключен ли этот клиент
+            const connectedRef = ref(rtdb, ".info/connected");
+            // Ссылка на список всех текущих подключений
+            const connectionsRef = ref(rtdb, "connections");
+
+            onValue(connectedRef, (snap) => {
+                if (snap.val() === true) {
+                    // Мы подключились! Добавляем себя в список подключений
+                    const myConnectionRef = push(connectionsRef);
+
+                    // onDisconnect() срабатывает НА СЕРВЕРЕ, когда клиент отключается (закрыл вкладку, пропал интернет)
+                    onDisconnect(myConnectionRef).remove();
+
+                    // Записываем 'true' по нашему сгенерированному ключу
+                    set(myConnectionRef, true);
+                }
+            });
+
+            // Слушаем количество детей (записей) в узле "connections", чтобы вывести счетчик
+            onValue(connectionsRef, (snap) => {
+                const count = snap.numChildren();
+                document.getElementById("onlineCount").innerText = count;
+            });
+        }
+        setupPresence();
+
+        // ==========================================
+        // ФУНКЦИЯ 2: Темная тема (Local UI + LocalStorage)
+        // ==========================================
+        const themeToggleBtn = document.getElementById("themeToggle");
+        
+        // Проверяем сохраненную тему в браузере при загрузке
+        if (localStorage.getItem("theme") === "dark") {
+            document.body.classList.add("dark-mode");
+            themeToggleBtn.innerText = "☀️ Светлая тема";
+        }
+
+        themeToggleBtn.addEventListener("click", () => {
+            document.body.classList.toggle("dark-mode");
+            if (document.body.classList.contains("dark-mode")) {
+                localStorage.setItem("theme", "dark");
+                themeToggleBtn.innerText = "☀️ Светлая тема";
+            } else {
+                localStorage.setItem("theme", "light");
+                themeToggleBtn.innerText = "🌙 Темная тема";
+            }
+        });
+
+        // ==========================================
+        // Существующие функции (Посты и Лайки)
         // ==========================================
         async function createRequest(db, userName, userEmail) {
             try {
                 const colRef = collection(db, "requests");
-                const docRef = await addDoc(colRef, {
+                await addDoc(colRef, {
                     name: userName,
                     email: userEmail,
                     likes: 0,
                     timestamp: serverTimestamp()
                 });
-                console.log("Успешно создано. ID документа:", docRef.id);
-                return true; // Возвращаем true, если успешно
+                return true;
             } catch (error) {
                 console.error("Ошибка при создании записи:", error.message);
                 alert("Ошибка: Данные отклонены сервером! Проверьте правила.");
@@ -69,29 +254,22 @@
             }
         }
 
-        // ==========================================
-        // ФУНКЦИЯ 2: Атомарное обновление (Лайки)
-        // ==========================================
         window.addLike = async function(documentId) {
             try {
                 const docRef = doc(db, "requests", documentId);
-                await updateDoc(docRef, {
-                    likes: increment(1)
-                });
-                console.log("Лайк успешно добавлен к документу:", documentId);
+                await updateDoc(docRef, { likes: increment(1) });
             } catch (error) {
-                console.error("Ошибка безопасности или сети:", error.message);
+                console.error("Ошибка безопасности:", error.message);
                 alert("Ошибка безопасности: " + error.message);
             }
         };
 
         // --- ЛОГИКА ИНТЕРФЕЙСА ---
-
-        // 1. Отправка формы (вызывает Функцию 1)
         const btn = document.getElementById('mainBtn');
         btn.addEventListener('click', async () => {
             const nameVal = document.getElementById('name').value;
             const emailVal = document.getElementById('email').value;
+            if(nameVal.length < 3) return alert("Имя должно быть минимум 3 символа");
             
             btn.disabled = true;
             const success = await createRequest(db, nameVal, emailVal);
@@ -102,7 +280,7 @@
             btn.disabled = false;
         });
 
-        // 2. Real-time лента сообщений
+        // Real-time лента
         const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
         onSnapshot(q, (snapshot) => {
             const feed = document.getElementById('feed');
