@@ -197,4 +197,99 @@
             if (!currentUser) return;
             const content = document.getElementById('content').value;
             const fileInput = document.getElementById('imageUpload').files[0];
-            if (!content && !fileInput
+            if (!content && !fileInput) return alert("Пустой пост!");
+
+            document.getElementById('mainBtn').disabled = true;
+            try {
+                let imageUrl = null;
+                if (fileInput) {
+                    const fileRef = storageRef(storage, 'uploads/' + Date.now() + '_' + fileInput.name);
+                    await uploadBytes(fileRef, fileInput);
+                    imageUrl = await getDownloadURL(fileRef);
+                }
+
+                await addDoc(collection(db, "requests"), {
+                    name: currentUser.displayName,
+                    email: currentUser.email,
+                    photo: currentUser.photoURL,
+                    text: content,
+                    imageUrl: imageUrl,
+                    likes: 0,
+                    timestamp: serverTimestamp()
+                });
+                playSound();
+                document.getElementById('content').value = "";
+                document.getElementById('imageUpload').value = "";
+            } catch (e) { alert("Ошибка: " + e.message); }
+            document.getElementById('mainBtn').disabled = false;
+        };
+
+        // --- 5. ОТПРАВКА DM ---
+        document.getElementById('dmBtn').onclick = async () => {
+            if (!currentUser) return;
+            const receiver = document.getElementById('dmReceiver').value;
+            const text = document.getElementById('dmContent').value;
+            if (!receiver || !text) return;
+
+            try {
+                await addDoc(collection(db, "dms"), {
+                    senderEmail: currentUser.email,
+                    senderName: currentUser.displayName,
+                    receiverEmail: receiver,
+                    text: text,
+                    timestamp: serverTimestamp()
+                });
+                playSound();
+                document.getElementById('dmContent').value = "";
+                alert("DM отправлено!");
+            } catch (e) { alert("Ошибка: " + e.message); }
+        };
+
+        // --- 6. ЧТЕНИЕ ЛЕНТЫ И ЛАЙКИ ---
+        window.processLike = async (id) => {
+            if (!currentUser) return alert("Войдите для лайков!");
+            await updateDoc(doc(db, "requests", id), { likes: increment(1) });
+        };
+
+        onSnapshot(query(collection(db, "requests"), orderBy("timestamp", "desc")), (snapshot) => {
+            const feed = document.getElementById('feed');
+            feed.innerHTML = "";
+            snapshot.forEach((docSnap) => {
+                const data = docSnap.data();
+                let imageHtml = data.imageUrl ? `<img src="${data.imageUrl}" class="content-img">` : '';
+                feed.innerHTML += `
+                    <div class="post">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <img src="${data.photo || 'https://via.placeholder.com/30'}" style="width:30px; border-radius:50%;">
+                            <b>${data.name}</b>
+                        </div>
+                        <p>${data.text}</p>
+                        ${imageHtml}
+                        <br><button onclick="processLike('${docSnap.id}')" class="btn-secondary">👍 Лайк (${data.likes || 0})</button>
+                    </div>
+                `;
+            });
+        });
+
+        // --- 7. ЧТЕНИЕ DM ---
+        function loadDirectMessages() {
+            if (!currentUser) return;
+            const qDms = query(collection(db, "dms"), where("receiverEmail", "==", currentUser.email));
+            onSnapshot(qDms, (snapshot) => {
+                const dmFeed = document.getElementById('dmFeed');
+                dmFeed.innerHTML = "";
+                snapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    dmFeed.innerHTML += `
+                        <div class="post" style="border-left: 4px solid #ff4757;">
+                            <span class="dm-badge">Вам письмо</span>
+                            <p><b>От:</b> ${data.senderName} (${data.senderEmail})</p>
+                            <p>${data.text}</p>
+                        </div>
+                    `;
+                });
+            });
+        }
+    </script>
+</body>
+</html>
