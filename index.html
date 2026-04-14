@@ -1,20 +1,18 @@
 <!DOCTYPE html>
-<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>BaaS Firebase - Realtime & Security</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Облачное приложение: Auth, DMs, Presence</title>
     <style>
-        /* Базовые светлые стили */
+        /* Базовые светлые стили из твоего старого кода */
         :root {
             --bg-color: #f4f7f6;
             --container-bg: white;
             --text-color: #333;
             --border-color: #ddd;
             --input-bg: #fff;
-            --post-bg: #fff;
             --btn-hover: #e2e6ea;
-            --like-bg: #f8f9fa;
         }
 
         /* Темная тема */
@@ -24,205 +22,129 @@
             --text-color: #e0e0e0;
             --border-color: #444;
             --input-bg: #2c2c2c;
-            --post-bg: #1e1e1e;
             --btn-hover: #555;
-            --like-bg: #333;
         }
+
+        /* Черно-белый фильтр (по заданию) */
+        body.bw-mode { filter: grayscale(100%); }
 
         body { 
             font-family: 'Inter', sans-serif; 
             background: var(--bg-color); 
             color: var(--text-color);
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            padding: 20px; 
-            margin: 0;
-            transition: background 0.3s, color 0.3s;
-        }
-        
-        .header-bar {
-            width: 100%;
-            max-width: 500px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
+            display: flex; flex-direction: column; align-items: center; padding: 20px; 
+            transition: background 0.3s, color 0.3s, filter 0.3s;
         }
 
-        .online-badge {
-            background: #28a745;
-            color: white;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: bold;
-        }
-
-        .theme-toggle {
-            cursor: pointer;
-            background: var(--container-bg);
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 14px;
-            transition: 0.3s;
-        }
-
-        .container { 
-            width: 100%; 
-            max-width: 500px; 
-            background: var(--container-bg); 
-            padding: 25px; 
-            border-radius: 12px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
-            box-sizing: border-box;
-            transition: background 0.3s;
-        }
+        .header-bar { width: 100%; max-width: 600px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        .online-badge { background: #28a745; color: white; padding: 5px 12px; border-radius: 20px; font-size: 14px; font-weight: bold; }
         
-        input { 
-            width: 100%; 
-            padding: 12px; 
-            margin: 8px 0; 
-            border: 1px solid var(--border-color); 
-            background: var(--input-bg);
-            color: var(--text-color);
-            border-radius: 6px; 
-            box-sizing: border-box; 
-        }
+        .container { width: 100%; max-width: 600px; background: var(--container-bg); padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; box-sizing: border-box; }
+        input, button { padding: 10px; margin: 5px 0; border-radius: 6px; border: 1px solid var(--border-color); width: 100%; box-sizing: border-box; background: var(--input-bg); color: var(--text-color); }
         
-        button#mainBtn { 
-            background: #007bff; 
-            color: white; 
-            border: none; 
-            padding: 12px; 
-            border-radius: 6px; 
-            width: 100%; 
-            font-weight: 600; 
-            cursor: pointer; 
-            transition: 0.3s; 
-            margin-top: 10px; 
-        }
+        button { background: #007bff; color: white; cursor: pointer; border: none; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        .btn-secondary { background: var(--container-bg); color: var(--text-color); border: 1px solid var(--border-color); width: auto;}
         
-        button#mainBtn:hover { background: #0056b3; }
-        
-        .post { 
-            background: var(--post-bg); 
-            border: 1px solid var(--border-color); 
-            padding: 15px; 
-            margin-top: 15px; 
-            border-radius: 8px; 
-            width: 100%; 
-            max-width: 500px; 
-            position: relative; 
-            box-sizing: border-box;
-            transition: background 0.3s;
-        }
-        
-        .like-btn { 
-            cursor: pointer; 
-            border: none; 
-            background: var(--like-bg); 
-            color: var(--text-color);
-            padding: 5px 12px; 
-            border-radius: 20px; 
-            font-size: 14px; 
-            transition: 0.2s; 
-            margin-top: 10px;
-        }
-        
-        .like-btn:hover { background: var(--btn-hover); }
-        .time { font-size: 11px; color: #999; float: right; }
+        .auth-bar { display: flex; align-items: center; gap: 15px; }
+        .user-avatar { width: 40px; height: 40px; border-radius: 50%; }
+        .post { background: var(--container-bg); border: 1px solid var(--border-color); padding: 15px; margin-top: 15px; border-radius: 8px; }
+        .post img.content-img { max-width: 100%; border-radius: 8px; margin-top: 10px; }
+        .dm-badge { background: #ff4757; color: white; padding: 2px 6px; border-radius: 10px; font-size: 12px; }
     </style>
 </head>
 <body>
 
     <div class="header-bar">
         <div class="online-badge">🟢 Онлайн: <span id="onlineCount">...</span></div>
-        <button id="themeToggle" class="theme-toggle">🌙 Темная тема</button>
+        <div style="display: flex; gap: 5px;">
+            <button id="themeToggle" class="btn-secondary">🌙 Темная тема</button>
+            <button id="toggleBwBtn" class="btn-secondary">👁️ Ч/Б Фильтр</button>
+            <button id="toggleSoundBtn" class="btn-secondary">🔊 Звук: Вкл</button>
+        </div>
+    </div>
+
+    <div id="authSection" class="container">
+        <button id="loginBtn">Войти через Google</button>
+        <div id="userInfo" style="display: none;" class="auth-bar">
+            <img id="userPhoto" class="user-avatar" src="" alt="Аватар">
+            <span id="userName" style="font-weight: bold;"></span>
+            <button id="logoutBtn" style="width: auto; background: #ff4757; color: white;">Выйти</button>
+        </div>
+    </div>
+
+    <div id="messageForm" class="container" style="display: none;">
+        <h3>Создать пост в ленту</h3>
+        <input type="text" id="content" placeholder="Что у вас нового?">
+        <input type="file" id="imageUpload" accept="image/*">
+        <button id="mainBtn">Опубликовать</button>
+    </div>
+
+    <div id="dmForm" class="container" style="display: none;">
+        <h3>Отправить личное сообщение</h3>
+        <input type="email" id="dmReceiver" placeholder="Email получателя">
+        <input type="text" id="dmContent" placeholder="Текст сообщения">
+        <button id="dmBtn" style="background: #2ed573;">Отправить DM</button>
     </div>
 
     <div class="container">
-        <h3>Панель управления данными</h3>
-        <input type="text" id="name" placeholder="Имя профиля (минимум 3 буквы)">
-        <input type="email" id="email" placeholder="Рабочий Email">
-        <button id="mainBtn">Опубликовать в облако</button>
+        <h3>Общая лента</h3>
+        <div id="feed"></div>
+    </div>
+    
+    <div class="container" id="dmContainer" style="display: none;">
+        <h3>Мои сообщения</h3>
+        <div id="dmFeed"></div>
     </div>
 
-    <div id="feed" style="width: 100%; max-width: 500px;"></div>
-
     <script type="module">
-        // Импорт Firebase Core
+        // ИМПОРТЫ FIREBASE
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-        
-        // Импорт Firestore (для постов и лайков)
-        import { 
-            getFirestore, collection, addDoc, query, orderBy, onSnapshot, 
-            serverTimestamp, doc, increment, updateDoc 
-        } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, increment, where } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+        import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js";
+        import { getDatabase, ref as dbRef, onValue, onDisconnect, set, push } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
 
-        // Импорт Realtime Database (для счетчика онлайн)
-        import { 
-            getDatabase, ref, onValue, onDisconnect, set, push 
-        } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
-
-        // Конфигурация Firebase
+        // ВСТАВЬ СЮДА СВОИ КЛЮЧИ!
+        // Важно: добавь databaseURL для работы счетчика онлайна
         const firebaseConfig = {
-            apiKey: "AIzaSyDGp3HhpUBFdVpsp2APcQr-uu6suZSQa6k",
-            authDomain: "procj-1c340.firebaseapp.com",
-            databaseURL: "https://procj-1c340-default-rtdb.firebaseio.com", // Добавлено для работы Realtime Database
-            projectId: "procj-1c340",
-            storageBucket: "procj-1c340.firebasestorage.app",
-            messagingSenderId: "213350806342",
-            appId: "1:213350806342:web:53d355b493918489ddab47"
+            apiKey: "ТВОЙ_API_KEY",
+            authDomain: "твой-проект.firebaseapp.com",
+            databaseURL: "https://твой-проект-default-rtdb.firebaseio.com", 
+            projectId: "твой-проект",
+            storageBucket: "твой-проект.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef"
         };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const rtdb = getDatabase(app); // Инициализация Realtime Database
+        const auth = getAuth(app);
+        const storage = getStorage(app);
+        const rtdb = getDatabase(app);
+        const provider = new GoogleAuthProvider();
 
-        // ==========================================
-        // ФУНКЦИЯ 1: Система "Presence" (Счетчик онлайн-пользователей)
-        // ==========================================
-        function setupPresence() {
-            // Ссылка на специальный путь Firebase, который показывает, подключен ли этот клиент
-            const connectedRef = ref(rtdb, ".info/connected");
-            // Ссылка на список всех текущих подключений
-            const connectionsRef = ref(rtdb, "connections");
+        let currentUser = null;
 
-            onValue(connectedRef, (snap) => {
-                if (snap.val() === true) {
-                    // Мы подключились! Добавляем себя в список подключений
-                    const myConnectionRef = push(connectionsRef);
-
-                    // onDisconnect() срабатывает НА СЕРВЕРЕ, когда клиент отключается (закрыл вкладку, пропал интернет)
-                    onDisconnect(myConnectionRef).remove();
-
-                    // Записываем 'true' по нашему сгенерированному ключу
-                    set(myConnectionRef, true);
-                }
-            });
-
-            // Слушаем количество детей (записей) в узле "connections", чтобы вывести счетчик
-            onValue(connectionsRef, (snap) => {
-                const count = snap.numChildren();
-                document.getElementById("onlineCount").innerText = count;
-            });
-        }
-        setupPresence();
-
-        // ==========================================
-        // ФУНКЦИЯ 2: Темная тема (Local UI + LocalStorage)
-        // ==========================================
-        const themeToggleBtn = document.getElementById("themeToggle");
+        // --- 1. ЛОГИКА ИНТЕРФЕЙСА (Темы, Фильтры, Звук) ---
+        let soundEnabled = true;
+        const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
         
-        // Проверяем сохраненную тему в браузере при загрузке
+        function playSound() { if (soundEnabled) notificationSound.play().catch(e => console.log("Звук заблокирован")); }
+
+        document.getElementById('toggleSoundBtn').onclick = (e) => {
+            soundEnabled = !soundEnabled;
+            e.target.innerText = soundEnabled ? "🔊 Звук: Вкл" : "🔇 Звук: Выкл";
+        };
+
+        document.getElementById('toggleBwBtn').onclick = () => document.body.classList.toggle('bw-mode');
+
+        // Темная тема (из твоего старого кода)
+        const themeToggleBtn = document.getElementById("themeToggle");
         if (localStorage.getItem("theme") === "dark") {
             document.body.classList.add("dark-mode");
             themeToggleBtn.innerText = "☀️ Светлая тема";
         }
-
         themeToggleBtn.addEventListener("click", () => {
             document.body.classList.toggle("dark-mode");
             if (document.body.classList.contains("dark-mode")) {
@@ -234,72 +156,45 @@
             }
         });
 
-        // ==========================================
-        // Существующие функции (Посты и Лайки)
-        // ==========================================
-        async function createRequest(db, userName, userEmail) {
-            try {
-                const colRef = collection(db, "requests");
-                await addDoc(colRef, {
-                    name: userName,
-                    email: userEmail,
-                    likes: 0,
-                    timestamp: serverTimestamp()
-                });
-                return true;
-            } catch (error) {
-                console.error("Ошибка при создании записи:", error.message);
-                alert("Ошибка: Данные отклонены сервером! Проверьте правила.");
-                return false;
-            }
-        }
-
-        window.addLike = async function(documentId) {
-            try {
-                const docRef = doc(db, "requests", documentId);
-                await updateDoc(docRef, { likes: increment(1) });
-            } catch (error) {
-                console.error("Ошибка безопасности:", error.message);
-                alert("Ошибка безопасности: " + error.message);
-            }
-        };
-
-        // --- ЛОГИКА ИНТЕРФЕЙСА ---
-        const btn = document.getElementById('mainBtn');
-        btn.addEventListener('click', async () => {
-            const nameVal = document.getElementById('name').value;
-            const emailVal = document.getElementById('email').value;
-            if(nameVal.length < 3) return alert("Имя должно быть минимум 3 символа");
-            
-            btn.disabled = true;
-            const success = await createRequest(db, nameVal, emailVal);
-            if (success) {
-                document.getElementById('name').value = "";
-                document.getElementById('email').value = "";
-            }
-            btn.disabled = false;
-        });
-
-        // Real-time лента
-        const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
-        onSnapshot(q, (snapshot) => {
-            const feed = document.getElementById('feed');
-            feed.innerHTML = ""; 
-            
-            snapshot.forEach((docSnap) => {
-                const data = docSnap.data();
-                const timeString = (data.timestamp && typeof data.timestamp.toDate === 'function') ? data.timestamp.toDate().toLocaleTimeString() : 'Только что...';
-                
-                feed.innerHTML += `
-                    <div class="post">
-                        <span class="time">${timeString}</span>
-                        <b>${data.name}</b>
-                        <p style="margin: 5px 0;">${data.email}</p>
-                        <button class="like-btn" onclick="addLike('${docSnap.id}')">👍 ${data.likes || 0}</button>
-                    </div>
-                `;
+        // --- 2. СЧЕТЧИК ОНЛАЙНА (из твоего старого кода) ---
+        function setupPresence() {
+            const connectedRef = dbRef(rtdb, ".info/connected");
+            const connectionsRef = dbRef(rtdb, "connections");
+            onValue(connectedRef, (snap) => {
+                if (snap.val() === true) {
+                    const myConnectionRef = push(connectionsRef);
+                    onDisconnect(myConnectionRef).remove();
+                    set(myConnectionRef, true);
+                }
             });
+            onValue(connectionsRef, (snap) => {
+                document.getElementById("onlineCount").innerText = snap.numChildren();
+            });
+        }
+        setupPresence();
+
+        // --- 3. АВТОРИЗАЦИЯ И РАЗБЛОКИРОВКА ИНТЕРФЕЙСА ---
+        document.getElementById('loginBtn').onclick = () => signInWithPopup(auth, provider);
+        document.getElementById('logoutBtn').onclick = () => signOut(auth);
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            const authElems = ['userInfo', 'messageForm', 'dmForm', 'dmContainer'];
+            if (user) {
+                document.getElementById('loginBtn').style.display = 'none';
+                authElems.forEach(id => document.getElementById(id).style.display = id === 'userInfo' ? 'flex' : 'block');
+                document.getElementById('userName').innerText = user.displayName;
+                document.getElementById('userPhoto').src = user.photoURL;
+                loadDirectMessages();
+            } else {
+                document.getElementById('loginBtn').style.display = 'block';
+                authElems.forEach(id => document.getElementById(id).style.display = 'none');
+            }
         });
-    </script>
-</body>
-</html>
+
+        // --- 4. ПУБЛИКАЦИЯ ПОСТА С КАРТИНКОЙ ---
+        document.getElementById('mainBtn').onclick = async () => {
+            if (!currentUser) return;
+            const content = document.getElementById('content').value;
+            const fileInput = document.getElementById('imageUpload').files[0];
+            if (!content && !fileInput
